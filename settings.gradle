@@ -1,0 +1,2 @@
+rootProject.name = "PixelHunterCam"
+include ':app'

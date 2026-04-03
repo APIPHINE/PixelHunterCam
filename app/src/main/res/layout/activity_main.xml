@@ -1,0 +1,374 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#000">
+
+    <!-- Camera preview -->
+    <androidx.camera.view.PreviewView
+        android:id="@+id/previewView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Grid Overlay -->
+    <com.pixelhunter.cam.ui.view.GridOverlayView
+        android:id="@+id/gridOverlayView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Focus visual feedback -->
+    <com.pixelhunter.cam.ui.view.FocusOverlayView
+        android:id="@+id/focusOverlayView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent" />
+
+    <!-- Ghost overlay image -->
+    <ImageView
+        android:id="@+id/overlayImageView"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        android:scaleType="centerCrop"
+        android:visibility="gone" />
+
+    <!-- Histogram (top right) -->
+    <com.pixelhunter.cam.ui.view.HistogramView
+        android:id="@+id/histogramView"
+        android:layout_width="120dp"
+        android:layout_height="80dp"
+        android:layout_margin="8dp"
+        android:visibility="gone"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+    <!-- TOP HUD: Session status and metadata -->
+    <LinearLayout
+        android:id="@+id/hudTop"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toStartOf="@id/histogramView">
+
+        <TextView
+            android:id="@+id/tvSessionStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="AUTO"
+            android:textColor="#FFF"
+            android:textSize="12sp"
+            android:fontFamily="monospace"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="4dp"
+            android:background="#AA000000" />
+
+        <TextView
+            android:id="@+id/tvLocation"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#FFD700"
+            android:textSize="11sp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:background="#AA000000"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvCameraMetadata"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#0F0"
+            android:textSize="10sp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:background="#AA000000"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/tvStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#AAF"
+            android:textSize="11sp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:background="#AA000000"
+            android:visibility="gone" />
+
+        <!-- GPS Status Indicator -->
+        <TextView
+            android:id="@+id/tvGpsStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="#0F0"
+            android:textSize="10sp"
+            android:paddingHorizontal="8dp"
+            android:paddingVertical="2dp"
+            android:background="#AA000000"
+            android:visibility="gone" />
+
+    </LinearLayout>
+
+    <!-- FLAG BANNER -->
+    <LinearLayout
+        android:id="@+id/flagBanner"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="10dp"
+        android:gravity="center_vertical"
+        android:visibility="gone"
+        app:layout_constraintTop_toBottomOf="@id/hudTop"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:id="@+id/tvFlagMessage"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:textColor="#FFF"
+            android:textSize="12sp"
+            android:text="Flag message" />
+
+        <Button
+            android:id="@+id/btnReviewSettings"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="Review"
+            android:textSize="11sp"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/btnDismissFlag"
+            android:layout_width="wrap_content"
+            android:layout_height="32dp"
+            android:text="OK"
+            android:textSize="11sp" />
+
+    </LinearLayout>
+
+    <!-- Zoom Slider (left side) -->
+    <com.google.android.material.slider.Slider
+        android:id="@+id/zoomSlider"
+        android:layout_width="200dp"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="-80dp"
+        android:rotation="270"
+        android:value="1.0"
+        android:valueFrom="1.0"
+        android:valueTo="8.0"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <!-- Zoom indicator -->
+    <TextView
+        android:id="@+id/tvZoomLevel"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="1.0x"
+        android:textColor="#FFF"
+        android:textSize="14sp"
+        android:fontFamily="monospace"
+        android:background="#AA000000"
+        android:padding="4dp"
+        android:layout_marginEnd="16dp"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent" />
+
+    <!-- OVERLAY CONTROLS -->
+    <LinearLayout
+        android:id="@+id/overlayControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="12dp"
+        android:background="#AA000000"
+        android:visibility="gone"
+        app:layout_constraintBottom_toTopOf="@id/bottomControls"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Ghost opacity"
+            android:textColor="#FFF"
+            android:textSize="12sp"
+            android:layout_marginEnd="8dp" />
+
+        <SeekBar
+            android:id="@+id/sliderOverlayOpacity"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:progress="35"
+            android:max="100" />
+
+    </LinearLayout>
+
+    <!-- BOTTOM CONTROLS -->
+    <LinearLayout
+        android:id="@+id/bottomControls"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:padding="12dp"
+        android:background="#CC000000"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent">
+
+        <!-- Left controls -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center">
+
+            <Button
+                android:id="@+id/btnGrid"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="Grid"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/btnHistogram"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="Hist"
+                android:textSize="11sp"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+        <!-- Session lock -->
+        <Button
+            android:id="@+id/btnSessionLock"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="🔒 Lock"
+            android:textSize="12sp"
+            android:layout_marginHorizontal="8dp" />
+
+        <!-- Capture button -->
+        <FrameLayout
+            android:layout_width="72dp"
+            android:layout_height="72dp">
+
+            <Button
+                android:id="@+id/btnCapture"
+                android:layout_width="72dp"
+                android:layout_height="72dp"
+                android:text=""
+                android:background="@drawable/btn_capture" />
+
+            <ProgressBar
+                android:id="@+id/progressCapture"
+                android:layout_width="32dp"
+                android:layout_height="32dp"
+                android:layout_gravity="center"
+                android:visibility="gone" />
+
+        </FrameLayout>
+        
+        <!-- Quick Reset button (shown when drift detected) -->
+        <Button
+            android:id="@+id/btnQuickReset"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="🔄 Reset"
+            android:textSize="12sp"
+            android:layout_marginHorizontal="8dp"
+            android:visibility="gone"
+            android:backgroundTint="#FF4444" />
+
+        <!-- Right controls -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginStart="8dp">
+
+            <Button
+                android:id="@+id/btnLens"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="Lens"
+                android:textSize="11sp" />
+
+            <Button
+                android:id="@+id/btnFlash"
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:text="⚡Auto"
+                android:textSize="11sp"
+                android:layout_marginTop="4dp" />
+
+            <Button
+                android:id="@+id/btnNewSession"
+                android:layout_width="match_parent"
+                android:layout_height="36dp"
+                android:text="📁 New"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp" />
+
+        </LinearLayout>
+
+        <!-- Ghost overlay -->
+        <Button
+            android:id="@+id/btnOverlay"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="Ghost"
+            android:textSize="12sp"
+            android:layout_marginStart="8dp" />
+
+        <!-- Gallery button -->
+        <Button
+            android:id="@+id/btnGallery"
+            android:layout_width="wrap_content"
+            android:layout_height="48dp"
+            android:text="🖼️"
+            android:textSize="16sp"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+    <!-- Shot counter and view last image -->
+    <LinearLayout
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        app:layout_constraintBottom_toTopOf="@id/bottomControls"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <TextView
+            android:id="@+id/tvCaptureCount"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0 shots"
+            android:textColor="#AAA"
+            android:textSize="11sp"
+            android:padding="4dp" />
+
+        <Button
+            android:id="@+id/btnViewLast"
+            android:layout_width="wrap_content"
+            android:layout_height="36dp"
+            android:text="View Last"
+            android:textSize="10sp"
+            android:visibility="gone"
+            android:layout_marginStart="8dp" />
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>
