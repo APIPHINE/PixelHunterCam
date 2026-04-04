@@ -4,6 +4,10 @@ Smart camera app for consistent multimodal training data capture.
 
 ---
 
+## Developer Guide
+
+> **New:** See [`AGENTS.md`](AGENTS.md) for the comprehensive development checklist covering CameraX, MediaStore, EXIF orientation, permissions, memory management, and common failure patterns.
+
 ## What's in this build
 
 - **Session lock** — first shot sets your baseline. Settings freeze for the session.
