@@ -18,7 +18,9 @@ import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.view.MotionEvent
+import android.view.OrientationEventListener
 import android.view.ScaleGestureDetector
+import android.view.Surface
 import androidx.camera.camera2.interop.Camera2CameraControl
 import androidx.camera.camera2.interop.Camera2CameraInfo
 import androidx.camera.camera2.interop.Camera2Interop
@@ -30,6 +32,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.pixelhunter.cam.session.SessionManager
 import com.pixelhunter.cam.session.SessionSettings
+import com.pixelhunter.cam.util.ImageLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -87,6 +90,8 @@ class EnhancedCameraController(
 
     // Focus tracking
     private var isFocusing = false
+    private var orientationEventListener: OrientationEventListener? = null
+    private var currentHardwareLevel: Int = CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY
 
     data class CameraId(val cameraId: String, val lensFacing: Int, val focalLength: Float?)
     
@@ -193,6 +198,12 @@ class EnhancedCameraController(
             
             // Update camera name
             updateActiveCameraName()
+            
+            // Start rotation tracking
+            startOrientationListener()
+            
+            // Record hardware level for manual-setting safety
+            currentHardwareLevel = getHardwareLevel(cameraId)
             
             Log.d(TAG, "Camera bound. Locked: ${settings.isLocked}")
         } catch (e: Exception) {
@@ -314,6 +325,11 @@ class EnhancedCameraController(
         captureBuilder: ImageCapture.Builder,
         settings: SessionSettings
     ) {
+        if (currentHardwareLevel == CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY) {
+            Log.w(TAG, "LEGACY hardware — manual settings disabled")
+            return
+        }
+        
         val previewEx = Camera2Interop.Extender(previewBuilder)
         val captureEx = Camera2Interop.Extender(captureBuilder)
 
@@ -412,7 +428,7 @@ class EnhancedCameraController(
     suspend fun capturePhoto(outputDir: File): CaptureResult {
         val file = takePictureToFile(outputDir)
         val bitmap = withContext(Dispatchers.Default) {
-            BitmapFactory.decodeFile(file.absolutePath)
+            ImageLoader.loadBitmap(file)
                 ?: throw IllegalStateException("Decode failed: ${file.name}")
         }
         
@@ -455,8 +471,36 @@ class EnhancedCameraController(
     // ─── Cleanup ──────────────────────────────────────────────────
 
     fun shutdown() {
+        orientationEventListener?.disable()
+        orientationEventListener = null
         mainHandler.removeCallbacksAndMessages(null)
         cameraExecutor.shutdown()
+    }
+    
+    private fun startOrientationListener() {
+        orientationEventListener?.disable()
+        orientationEventListener = object : OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                val rotation = when (orientation) {
+                    in 45..134 -> Surface.ROTATION_270
+                    in 135..224 -> Surface.ROTATION_180
+                    in 225..314 -> Surface.ROTATION_90
+                    else -> Surface.ROTATION_0
+                }
+                imageCapture?.targetRotation = rotation
+            }
+        }.also { it.enable() }
+    }
+    
+    private fun getHardwareLevel(cameraId: String): Int {
+        return try {
+            val cameraManager = context.getSystemService(Context.CAMERA_SERVICE) as CameraManager
+            cameraManager.getCameraCharacteristics(cameraId)
+                .get(CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL)
+                ?: CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY
+        } catch (e: Exception) {
+            CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY
+        }
     }
 
     private suspend fun getCameraProvider(): ProcessCameraProvider = suspendCoroutine { cont ->

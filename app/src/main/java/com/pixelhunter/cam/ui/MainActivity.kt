@@ -71,6 +71,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
 
@@ -150,7 +151,9 @@ class MainActivity : AppCompatActivity() {
     private fun setupButtons() {
         // Shutter
         binding.btnCapture.setOnClickListener {
-            viewModel.capturePhoto()
+            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
+                viewModel.capturePhoto()
+            }
         }
         
         // Emergency reset on long press

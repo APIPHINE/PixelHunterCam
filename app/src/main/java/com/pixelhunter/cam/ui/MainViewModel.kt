@@ -1,8 +1,12 @@
 package com.pixelhunter.cam.ui
 
 import android.app.Application
+import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.os.Build
+import android.view.Surface
+import android.view.WindowManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pixelhunter.cam.analysis.EnhancedFrameAnalyzer
@@ -14,6 +18,8 @@ import com.pixelhunter.cam.session.SessionManager
 import com.pixelhunter.cam.session.SessionSettings
 import com.pixelhunter.cam.storage.MediaStoreManager
 import com.pixelhunter.cam.ui.view.GridOverlayView
+import com.pixelhunter.cam.util.ImageLoader
+import com.pixelhunter.cam.util.MemoryManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -235,7 +241,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     zoomRatio = cameraState.value.currentZoom,
                     focusDistanceDiopters = 0f,
                     exposureBias = 0f,
-                    deviceOrientation = 0,
+                    deviceOrientation = getDeviceRotation(),
                     sessionLabel = settings.locationLabel,
                     sessionId = currentSessionId,
                     actualIso = captureResult.metadata.actualIso,
@@ -374,14 +380,20 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         }
     }
 
-    private fun saveThumbnail(bitmap: Bitmap, name: String): String {
+    private fun saveThumbnail(bitmap: Bitmap, originalFile: File): String {
         val thumbDir = File(getApplication<Application>().filesDir, "thumbnails")
         if (!thumbDir.exists()) thumbDir.mkdirs()
-        val thumbFile = File(thumbDir, "${name}_thumb.jpg")
-        val scaled = Bitmap.createScaledBitmap(bitmap, 200, 150, true)
+        val thumbFile = File(thumbDir, "${originalFile.nameWithoutExtension}_thumb.jpg")
+
+        // Apply EXIF orientation from original capture so thumbnail is upright
+        val orientedBitmap = ImageLoader.loadBitmap(originalFile) ?: bitmap
+        val scaled = Bitmap.createScaledBitmap(orientedBitmap, 200, 150, true)
         try {
             FileOutputStream(thumbFile).use { scaled.compress(Bitmap.CompressFormat.JPEG, 80, it) }
         } finally {
+            if (orientedBitmap !== bitmap) {
+                MemoryManager.recycle(orientedBitmap, "orientedThumb")
+            }
             scaled.recycle()
         }
         return thumbFile.absolutePath
@@ -416,7 +428,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun selectOverlayImage(imagePath: String) {
         viewModelScope.launch {
             val bitmap = withContext(Dispatchers.Default) {
-                BitmapFactory.decodeFile(imagePath)
+                ImageLoader.loadBitmap(getApplication(), imagePath)
             }
             _uiState.value.activeOverlayBitmap?.recycle()
             _uiState.value = _uiState.value.copy(
@@ -481,6 +493,16 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ─── Utilities ────────────────────────────────────────────────
+
+    private fun getDeviceRotation(): Int {
+        val windowManager = getApplication<Application>().getSystemService(Context.WINDOW_SERVICE) as WindowManager
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            getApplication<Application>().display?.rotation ?: Surface.ROTATION_0
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.rotation
+        }
+    }
 
     private fun getOutputDir(): File {
         val dir = File(getApplication<Application>().filesDir, "captures")

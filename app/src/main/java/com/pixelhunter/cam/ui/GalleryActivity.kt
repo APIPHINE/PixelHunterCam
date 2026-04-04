@@ -2,7 +2,7 @@ package com.pixelhunter.cam.ui
 
 import android.app.Activity
 import android.content.Intent
-import android.graphics.BitmapFactory
+import com.pixelhunter.cam.util.ImageLoader
 import android.net.Uri
 import android.os.Bundle
 import android.view.MenuItem
@@ -164,12 +164,12 @@ class GalleryActivity : AppCompatActivity() {
 
         // Load the full image
         CoroutineScope(Dispatchers.IO).launch {
-            val bitmap = BitmapFactory.decodeFile(image.imagePath)
+            val bitmap = ImageLoader.loadBitmap(this@GalleryActivity, image.imagePath)
             withContext(Dispatchers.Main) {
                 if (bitmap != null) {
                     fullImageView.setImageBitmap(bitmap)
                 } else {
-                    fullImageView.setImageResource(android.R.drawable.ic_delete)
+                    fullImageView.setImageResource(R.drawable.placeholder_image)
                 }
             }
         }
@@ -196,15 +196,31 @@ class GalleryActivity : AppCompatActivity() {
 
     private fun shareCurrentImage() {
         currentImage?.let { image ->
-            val file = File(image.imagePath)
-            if (file.exists()) {
-                val uri = Uri.fromFile(file)
-                val shareIntent = Intent(Intent.ACTION_SEND).apply {
-                    type = "image/jpeg"
-                    putExtra(Intent.EXTRA_STREAM, uri)
-                    putExtra(Intent.EXTRA_SUBJECT, "Pixel Hunter Image")
+            val shareIntent = when {
+                image.imagePath.startsWith("content://") -> {
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "image/jpeg"
+                        putExtra(Intent.EXTRA_STREAM, Uri.parse(image.imagePath))
+                        putExtra(Intent.EXTRA_SUBJECT, "Pixel Hunter Image")
+                    }
                 }
-                startActivity(Intent.createChooser(shareIntent, "Share Image"))
+                File(image.imagePath).exists() -> {
+                    val uri = androidx.core.content.FileProvider.getUriForFile(
+                        this,
+                        "${packageName}.fileprovider",
+                        File(image.imagePath)
+                    )
+                    Intent(Intent.ACTION_SEND).apply {
+                        type = "image/jpeg"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        putExtra(Intent.EXTRA_SUBJECT, "Pixel Hunter Image")
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                }
+                else -> null
+            }
+            shareIntent?.let {
+                startActivity(Intent.createChooser(it, "Share Image"))
             }
         }
     }

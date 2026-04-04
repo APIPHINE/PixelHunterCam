@@ -227,10 +227,10 @@ class MediaStoreManager(private val context: Context) {
                     
                     // Orientation - critical for correct bounding box annotation
                     val exifOrientation = when (metadata.deviceOrientation) {
-                        Surface.ROTATION_0   -> ExifInterface.ORIENTATION_NORMAL
-                        Surface.ROTATION_90  -> ExifInterface.ORIENTATION_ROTATE_270
-                        Surface.ROTATION_180 -> ExifInterface.ORIENTATION_ROTATE_180
-                        Surface.ROTATION_270 -> ExifInterface.ORIENTATION_ROTATE_90
+                        Surface.ROTATION_0   -> ExifInterface.ORIENTATION_ROTATE_90   // portrait
+                        Surface.ROTATION_90  -> ExifInterface.ORIENTATION_NORMAL      // landscape right
+                        Surface.ROTATION_180 -> ExifInterface.ORIENTATION_ROTATE_270  // portrait upside down
+                        Surface.ROTATION_270 -> ExifInterface.ORIENTATION_ROTATE_180  // landscape left
                         else                 -> ExifInterface.ORIENTATION_NORMAL
                     }
                     setAttribute(ExifInterface.TAG_ORIENTATION, exifOrientation.toString())

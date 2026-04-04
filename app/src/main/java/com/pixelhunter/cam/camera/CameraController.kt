@@ -3,6 +3,9 @@ package com.pixelhunter.cam.camera
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
+import android.view.OrientationEventListener
+import android.view.Surface
+import android.hardware.camera2.CameraCharacteristics
 import android.hardware.camera2.CaptureRequest
 import android.hardware.camera2.params.RggbChannelVector
 import android.util.Log
@@ -14,6 +17,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import com.pixelhunter.cam.session.SessionManager
 import com.pixelhunter.cam.session.SessionSettings
+import com.pixelhunter.cam.util.ImageLoader
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -38,8 +42,10 @@ class CameraController(
 
     private var camera: Camera? = null
     private var imageCapture: ImageCapture? = null
+    private var preview: Preview? = null
     private var cameraProvider: ProcessCameraProvider? = null
     private val cameraExecutor: ExecutorService = Executors.newSingleThreadExecutor()
+    private var orientationEventListener: OrientationEventListener? = null
 
     // ─── Start camera ─────────────────────────────────────────────
     //
@@ -69,7 +75,7 @@ class CameraController(
             applyManualSettings(previewBuilder, captureBuilder, settings)
         }
 
-        val preview = previewBuilder.build().also {
+        preview = previewBuilder.build().also {
             it.setSurfaceProvider(previewView.surfaceProvider)
         }
         imageCapture = captureBuilder.build()
@@ -78,6 +84,7 @@ class CameraController(
             provider.unbindAll()
             camera = provider.bindToLifecycle(
                 lifecycleOwner, CameraSelector.DEFAULT_BACK_CAMERA, preview, imageCapture)
+            startOrientationListener()
             Log.d(TAG, "Camera started. Locked: ${settings.isLocked}")
         } catch (e: Exception) {
             Log.e(TAG, "Camera bind failed", e)
@@ -173,7 +180,7 @@ class CameraController(
     suspend fun capturePhoto(outputDir: File): CaptureResult {
         val file = takePictureToFile(outputDir)
         val bitmap = withContext(Dispatchers.Default) {
-            BitmapFactory.decodeFile(file.absolutePath)
+            ImageLoader.loadBitmap(file)
                 ?: throw IllegalStateException("Decode failed: ${file.name}")
         }
         return CaptureResult(file, bitmap, System.currentTimeMillis())
@@ -205,5 +212,24 @@ class CameraController(
         }
     }
 
-    fun shutdown() { cameraExecutor.shutdown() }
+    fun shutdown() {
+        orientationEventListener?.disable()
+        orientationEventListener = null
+        cameraExecutor.shutdown()
+    }
+    
+    private fun startOrientationListener() {
+        orientationEventListener?.disable()
+        orientationEventListener = object : OrientationEventListener(context) {
+            override fun onOrientationChanged(orientation: Int) {
+                val rotation = when (orientation) {
+                    in 45..134 -> Surface.ROTATION_270
+                    in 135..224 -> Surface.ROTATION_180
+                    in 225..314 -> Surface.ROTATION_90
+                    else -> Surface.ROTATION_0
+                }
+                imageCapture?.targetRotation = rotation
+            }
+        }.also { it.enable() }
+    }
 }

@@ -1,6 +1,6 @@
 package com.pixelhunter.cam.ui
 
-import android.graphics.BitmapFactory
+import com.pixelhunter.cam.util.ImageLoader
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -41,18 +41,14 @@ class GalleryAdapter(
 
         // Load thumbnail asynchronously
         CoroutineScope(Dispatchers.IO).launch {
-            val bitmap = BitmapFactory.decodeFile(image.thumbnailPath)
+            val context = holder.itemView.context
+            val bitmap = ImageLoader.loadBitmap(context, image.thumbnailPath)
+                ?: ImageLoader.loadBitmap(context, image.imagePath)
             withContext(Dispatchers.Main) {
                 if (bitmap != null) {
                     holder.imgThumbnail.setImageBitmap(bitmap)
                 } else {
-                    // Try loading full image if thumbnail is missing
-                    val fullBitmap = BitmapFactory.decodeFile(image.imagePath)
-                    if (fullBitmap != null) {
-                        holder.imgThumbnail.setImageBitmap(fullBitmap)
-                    } else {
-                        holder.imgThumbnail.setImageResource(android.R.drawable.ic_delete)
-                    }
+                    holder.imgThumbnail.setImageResource(R.drawable.placeholder_image)
                 }
             }
         }
