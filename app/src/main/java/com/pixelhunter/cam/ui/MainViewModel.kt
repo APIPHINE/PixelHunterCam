@@ -334,7 +334,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         locationResult: HighAccuracyLocationManager.LocationResult
     ) {
         try {
-            val thumbPath = saveThumbnail(capture.bitmap, capture.file.nameWithoutExtension)
+            val thumbPath = saveThumbnail(capture.bitmap, capture.file)
             val s = sessionManager.settings.value
 
             android.util.Log.d("Capture", "Creating location for image...")
