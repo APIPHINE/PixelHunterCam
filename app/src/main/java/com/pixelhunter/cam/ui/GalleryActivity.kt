@@ -240,12 +240,21 @@ class GalleryActivity : AppCompatActivity() {
 
     private fun performDelete(image: ShootImage) {
         CoroutineScope(Dispatchers.IO).launch {
-            // Delete from database
             val db = PixelHunterDatabase.getInstance(this@GalleryActivity)
             db.imageDao().deleteImage(image)
 
-            // Delete files
-            File(image.imagePath).delete()
+            // Delete the actual image file — handle both content:// and file paths
+            if (image.imagePath.startsWith("content://")) {
+                try {
+                    contentResolver.delete(Uri.parse(image.imagePath), null, null)
+                } catch (e: Exception) {
+                    android.util.Log.e("Gallery", "MediaStore delete failed", e)
+                }
+            } else {
+                File(image.imagePath).delete()
+            }
+
+            // Thumbnail is always a local file path
             File(image.thumbnailPath).delete()
 
             withContext(Dispatchers.Main) {
