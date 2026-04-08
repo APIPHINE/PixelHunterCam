@@ -155,8 +155,12 @@ class EnhancedCameraController(
         provider.unbindAll()
 
         // Select camera
-        val cameraSelector = if (availableCameras.isNotEmpty() && currentCameraIndex < availableCameras.size) {
-            val cameraId = availableCameras[currentCameraIndex].cameraId
+        val cameraId = if (availableCameras.isNotEmpty() && currentCameraIndex < availableCameras.size) {
+            availableCameras[currentCameraIndex].cameraId
+        } else {
+            null
+        }
+        val cameraSelector = if (cameraId != null) {
             CameraSelector.Builder()
                 .addCameraFilter { cameras ->
                     cameras.filter { Camera2CameraInfo.from(it).cameraId == cameraId }
@@ -203,7 +207,7 @@ class EnhancedCameraController(
             startOrientationListener()
             
             // Record hardware level for manual-setting safety
-            currentHardwareLevel = getHardwareLevel(cameraId)
+            cameraId?.let { currentHardwareLevel = getHardwareLevel(it) }
             
             Log.d(TAG, "Camera bound. Locked: ${settings.isLocked}")
         } catch (e: Exception) {
