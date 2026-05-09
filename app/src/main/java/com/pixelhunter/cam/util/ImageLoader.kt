@@ -28,6 +28,43 @@ object ImageLoader {
     }
 
     /**
+     * Load a bitmap scaled to fit within [maxDimension] on its largest side,
+     * with EXIF orientation applied. Prevents OOM when displaying large captures.
+     */
+    fun loadBitmap(context: Context, path: String?, maxDimension: Int): Bitmap? {
+        if (path.isNullOrBlank()) return null
+
+        val orientation = readExifOrientation(context, path)
+        val needsRotation = orientation == ExifInterface.ORIENTATION_ROTATE_90 ||
+                orientation == ExifInterface.ORIENTATION_ROTATE_270
+
+        val options = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        decodeBitmap(context, path, options)
+
+        val srcWidth = options.outWidth
+        val srcHeight = options.outHeight
+        if (srcWidth <= 0 || srcHeight <= 0) return null
+
+        // Account for rotation when calculating sample size
+        val (w, h) = if (needsRotation) srcHeight to srcWidth else srcWidth to srcHeight
+        options.inSampleSize = calculateInSampleSize(w, h, maxDimension, maxDimension)
+        options.inJustDecodeBounds = false
+
+        val bitmap = decodeBitmap(context, path, options) ?: return null
+        return applyExifOrientation(bitmap, orientation)
+    }
+
+    private fun calculateInSampleSize(width: Int, height: Int, reqWidth: Int, reqHeight: Int): Int {
+        var inSampleSize = 1
+        while (width / inSampleSize >= reqWidth * 2 && height / inSampleSize >= reqHeight * 2) {
+            inSampleSize *= 2
+        }
+        return inSampleSize
+    }
+
+    /**
      * Load a bitmap from a file with EXIF orientation applied.
      */
     fun loadBitmap(file: File): Bitmap? {
@@ -75,15 +112,15 @@ object ImageLoader {
         }
     }
 
-    private fun decodeBitmap(context: Context, path: String): Bitmap? {
+    private fun decodeBitmap(context: Context, path: String, options: BitmapFactory.Options? = null): Bitmap? {
         return try {
             if (path.startsWith("content://")) {
                 val uri = Uri.parse(path)
                 context.contentResolver.openInputStream(uri)?.use {
-                    BitmapFactory.decodeStream(it)
+                    BitmapFactory.decodeStream(it, null, options ?: BitmapFactory.Options())
                 }
             } else {
-                BitmapFactory.decodeFile(path)
+                BitmapFactory.decodeFile(path, options ?: BitmapFactory.Options())
             }
         } catch (e: Exception) {
             null

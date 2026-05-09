@@ -92,6 +92,7 @@ class EnhancedCameraController(
     private var isFocusing = false
     private var orientationEventListener: OrientationEventListener? = null
     private var currentHardwareLevel: Int = CameraCharacteristics.INFO_SUPPORTED_HARDWARE_LEVEL_LEGACY
+    private var captureInProgress = false
 
     data class CameraId(val cameraId: String, val lensFacing: Int, val focalLength: Float?)
     
@@ -430,7 +431,10 @@ class EnhancedCameraController(
     }
 
     suspend fun capturePhoto(outputDir: File): CaptureResult {
-        val file = takePictureToFile(outputDir)
+        if (captureInProgress) throw IllegalStateException("Capture already in progress")
+        captureInProgress = true
+        try {
+            val file = takePictureToFile(outputDir)
         val bitmap = withContext(Dispatchers.Default) {
             ImageLoader.loadBitmap(file)
                 ?: throw IllegalStateException("Decode failed: ${file.name}")
@@ -443,7 +447,10 @@ class EnhancedCameraController(
             aperture = null // Would need Camera2 CaptureCallback for this
         )
         
-        return CaptureResult(file, bitmap, System.currentTimeMillis(), metadata)
+            return CaptureResult(file, bitmap, System.currentTimeMillis(), metadata)
+        } finally {
+            captureInProgress = false
+        }
     }
 
     private suspend fun takePictureToFile(outputDir: File): File = suspendCoroutine { cont ->
@@ -451,7 +458,7 @@ class EnhancedCameraController(
             cont.resumeWithException(IllegalStateException("Camera not started"))
             return@suspendCoroutine
         }
-        val fileName = "PHC_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.jpg"
+        val fileName = "PHC_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.jpg"
         val outputFile = File(outputDir, fileName)
         capture.takePicture(
             ImageCapture.OutputFileOptions.Builder(outputFile).build(),

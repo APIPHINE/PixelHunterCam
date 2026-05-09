@@ -151,8 +151,8 @@ class MainActivity : AppCompatActivity() {
     private fun setupButtons() {
         // Shutter
         binding.btnCapture.setOnClickListener {
-            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
-                viewModel.capturePhoto()
+            if (lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED) && !viewModel.uiState.value.isCapturing) {
+                viewModel.capturePhoto(getDeviceRotation())
             }
         }
         
@@ -240,7 +240,7 @@ class MainActivity : AppCompatActivity() {
         
         // Quick reset button (shown when drift detected)
         binding.btnQuickReset?.setOnClickListener {
-            viewModel.unlockSession()
+            viewModel.unlockSession(this, binding.previewView)
         }
 
         // Gallery button
@@ -475,7 +475,7 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("🔓 Unlock Session?")
             .setMessage("This will clear all locked settings and return to auto mode.\n\nYou'll need to tap the shutter again to lock new settings.")
-            .setPositiveButton("Unlock") { _, _ -> viewModel.unlockSession() }
+            .setPositiveButton("Unlock") { _, _ -> viewModel.unlockSession(this, binding.previewView) }
             .setNegativeButton("Keep Locked", null)
             .show()
     }
@@ -484,13 +484,22 @@ class MainActivity : AppCompatActivity() {
         AlertDialog.Builder(this)
             .setTitle("📁 New Session?")
             .setMessage("Start a new capture session? This will reset the shot counter.")
-            .setPositiveButton("Start New") { _, _ -> viewModel.startNewSession() }
+            .setPositiveButton("Start New") { _, _ -> viewModel.startNewSession(this, binding.previewView) }
             .setNegativeButton("Cancel", null)
             .show()
     }
 
     private fun hasPermissions() = requiredPermissions.all {
         ContextCompat.checkSelfPermission(this, it) == PackageManager.PERMISSION_GRANTED
+    }
+
+    private fun getDeviceRotation(): Int {
+        return if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.R) {
+            display?.rotation ?: android.view.Surface.ROTATION_0
+        } else {
+            @Suppress("DEPRECATION")
+            windowManager.defaultDisplay.rotation
+        }
     }
 }
 

@@ -191,7 +191,7 @@ class CameraController(
             cont.resumeWithException(IllegalStateException("Camera not started"))
             return@suspendCoroutine
         }
-        val fileName = "PHC_${SimpleDateFormat("yyyyMMdd_HHmmss", Locale.US).format(Date())}.jpg"
+        val fileName = "PHC_${SimpleDateFormat("yyyyMMdd_HHmmss_SSS", Locale.US).format(Date())}.jpg"
         val outputFile = File(outputDir, fileName)
         capture.takePicture(
             ImageCapture.OutputFileOptions.Builder(outputFile).build(),

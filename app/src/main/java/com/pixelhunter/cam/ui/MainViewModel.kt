@@ -6,7 +6,6 @@ import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.Build
 import android.view.Surface
-import android.view.WindowManager
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import com.pixelhunter.cam.analysis.EnhancedFrameAnalyzer
@@ -33,6 +32,7 @@ import java.text.SimpleDateFormat
 import java.util.*
 import androidx.camera.view.PreviewView
 import android.view.MotionEvent
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * Enhanced ViewModel with:
@@ -64,6 +64,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     
     // Session tracking
     private var currentSessionId = generateSessionId()
+    private val captureLock = AtomicBoolean(false)
 
     // ─── Camera Control ───────────────────────────────────────────
 
@@ -164,7 +165,11 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ─── Capture with Full Metadata ───────────────────────────────
 
-    fun capturePhoto() {
+    fun capturePhoto(deviceRotation: Int = Surface.ROTATION_0) {
+        if (!captureLock.compareAndSet(false, true)) {
+            android.util.Log.w("Capture", "Capture rejected: already in progress")
+            return
+        }
         viewModelScope.launch {
             android.util.Log.d("Capture", "=== Starting capture ===")
             _uiState.value = _uiState.value.copy(isCapturing = true, statusMessage = "Capturing...")
@@ -241,7 +246,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                     zoomRatio = cameraState.value.currentZoom,
                     focusDistanceDiopters = 0f,
                     exposureBias = 0f,
-                    deviceOrientation = getDeviceRotation(),
+                    deviceOrientation = deviceRotation,
                     sessionLabel = settings.locationLabel,
                     sessionId = currentSessionId,
                     actualIso = captureResult.metadata.actualIso,
@@ -308,6 +313,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 // Step 9: Cleanup - always recycle bitmap
                 android.util.Log.d("Capture", "Step 9: Cleanup...")
                 capturedBitmap?.recycle()
+                captureLock.set(false)
             }
         }
     }
@@ -401,7 +407,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
     // ─── Session Management ───────────────────────────────────────
 
-    fun startNewSession() {
+    fun startNewSession(lifecycleOwner: androidx.lifecycle.LifecycleOwner? = null, previewView: PreviewView? = null) {
         currentSessionId = generateSessionId()
         sessionManager.unlockSession()
         _uiState.value = _uiState.value.copy(
@@ -410,6 +416,10 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
             lastCaptureFlags = emptyList(),
             showFlagPrompt = false
         )
+        // Rebind camera to return to auto mode
+        if (lifecycleOwner != null && previewView != null) {
+            cameraController.rebindCamera(lifecycleOwner, previewView)
+        }
     }
 
     private fun generateSessionId(): String {
@@ -464,13 +474,17 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         )
     }
 
-    fun unlockSession() {
+    fun unlockSession(lifecycleOwner: androidx.lifecycle.LifecycleOwner? = null, previewView: PreviewView? = null) {
         sessionManager.unlockSession()
         _uiState.value = _uiState.value.copy(
             statusMessage = "🔓 Session unlocked — back to auto",
             showResetConfirm = false,
             isCapturing = false // Reset capture state in case it got stuck
         )
+        // Rebind camera to return to auto mode
+        if (lifecycleOwner != null && previewView != null) {
+            cameraController.rebindCamera(lifecycleOwner, previewView)
+        }
     }
     
     /**
@@ -493,16 +507,6 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     // ─── Utilities ────────────────────────────────────────────────
-
-    private fun getDeviceRotation(): Int {
-        val windowManager = getApplication<Application>().getSystemService(Context.WINDOW_SERVICE) as WindowManager
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-            getApplication<Application>().display?.rotation ?: Surface.ROTATION_0
-        } else {
-            @Suppress("DEPRECATION")
-            windowManager.defaultDisplay.rotation
-        }
-    }
 
     private fun getOutputDir(): File {
         val dir = File(getApplication<Application>().filesDir, "captures")

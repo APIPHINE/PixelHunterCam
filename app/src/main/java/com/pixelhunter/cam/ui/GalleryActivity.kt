@@ -44,6 +44,7 @@ class GalleryActivity : AppCompatActivity() {
     private var images: List<ShootImage> = emptyList()
     private var currentImage: ShootImage? = null
     private var viewMode = ViewMode.GRID
+    private var fullImageLoadJob: kotlinx.coroutines.Job? = null
 
     private enum class ViewMode { GRID, FULLSCREEN }
 
@@ -76,6 +77,13 @@ class GalleryActivity : AppCompatActivity() {
         if (showSingle && singleImagePath != null) {
             loadSingleImage(singleImagePath)
         } else {
+            loadGallery()
+        }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        if (viewMode == ViewMode.GRID) {
             loadGallery()
         }
     }
@@ -162,9 +170,14 @@ class GalleryActivity : AppCompatActivity() {
         imageInfoPanel.visibility = View.VISIBLE
         emptyView.visibility = View.GONE
 
-        // Load the full image
-        CoroutineScope(Dispatchers.IO).launch {
-            val bitmap = ImageLoader.loadBitmap(this@GalleryActivity, image.imagePath)
+        // Cancel any previous full-image load
+        fullImageLoadJob?.cancel()
+        fullImageView.setImageResource(R.drawable.placeholder_image)
+
+        // Load the full image scaled to screen width to avoid OOM
+        val screenWidth = resources.displayMetrics.widthPixels
+        fullImageLoadJob = CoroutineScope(Dispatchers.IO).launch {
+            val bitmap = ImageLoader.loadBitmap(this@GalleryActivity, image.imagePath, screenWidth)
             withContext(Dispatchers.Main) {
                 if (bitmap != null) {
                     fullImageView.setImageBitmap(bitmap)
